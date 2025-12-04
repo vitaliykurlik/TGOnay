@@ -242,74 +242,94 @@ bot.on('text', async (ctx) => {
     const canvas = createCanvas(600, 900);
     const c = canvas.getContext('2d');
 
-    // Светло-фиолетовый фон карточки (более точный цвет)
-    c.fillStyle = '#E9D5FF';
-    c.roundRect(20, 20, 560, 860, 25);
-    c.fill();
-
     const route = ctx.session.route;
     if (!route) {
       console.error('Ошибка: маршрут не найден в сессии');
       return showMainMenu(ctx, '❌ Ошибка: маршрут не найден. Начните заново.');
     }
 
-    let yPos = 70;
+    // Белый фон всего canvas
+    c.fillStyle = '#FFFFFF';
+    c.fillRect(0, 0, 600, 900);
+
+    // Темно-фиолетовый фон карточки
+    c.fillStyle = '#8B5CF6';
+    c.roundRect(20, 20, 560, 860, 25);
+    c.fill();
+
+    // Полукруглые вырезы слева (вырезаем белые полукруги)
+    const notchRadius = 15;
+    const notchY = 150;
+    c.fillStyle = '#FFFFFF';
+    c.beginPath();
+    c.arc(20, notchY, notchRadius, Math.PI / 2, Math.PI * 3 / 2);
+    c.fill();
+    c.beginPath();
+    c.arc(20, notchY + 200, notchRadius, Math.PI / 2, Math.PI * 3 / 2);
+    c.fill();
+    c.beginPath();
+    c.arc(20, notchY + 400, notchRadius, Math.PI / 2, Math.PI * 3 / 2);
+    c.fill();
+    c.beginPath();
+    c.arc(20, notchY + 600, notchRadius, Math.PI / 2, Math.PI * 3 / 2);
+    c.fill();
+
+    // Полукруглые вырезы справа
+    c.beginPath();
+    c.arc(580, notchY, notchRadius, -Math.PI / 2, Math.PI / 2);
+    c.fill();
+    c.beginPath();
+    c.arc(580, notchY + 200, notchRadius, -Math.PI / 2, Math.PI / 2);
+    c.fill();
+    c.beginPath();
+    c.arc(580, notchY + 400, notchRadius, -Math.PI / 2, Math.PI / 2);
+    c.fill();
+    c.beginPath();
+    c.arc(580, notchY + 600, notchRadius, -Math.PI / 2, Math.PI / 2);
+    c.fill();
+
+    // Все надписи по центру и черным цветом
+    c.textAlign = 'center';
+    c.fillStyle = '#000000';
+
+    let yPos = 100;
 
     // Маршрут (заголовок)
     c.font = '28px Arial';
-    c.fillStyle = '#6B21A8';
-    c.textAlign = 'left';
-    c.fillText('Маршрут', 40, yPos);
+    c.fillText('Маршрут', 300, yPos);
     
-    yPos += 45;
+    yPos += 50;
     // Автобус иконка + номер маршрута
     c.font = 'bold 42px Arial';
-    c.fillStyle = '#4C1D95';
-    c.fillText('🚍 ' + route + 'E', 40, yPos);
+    c.fillText('🚍 ' + route + 'E', 300, yPos);
     
-    // Код маршрута в рамке (справа)
-    const routeCodeText = routeCode;
+    yPos += 50;
+    // Код маршрута
     c.font = 'bold 32px Arial';
-    const routeCodeWidth = c.measureText(routeCodeText).width;
-    const routeCodePadding = 12;
-    const routeCodeHeight = 42;
-    const routeCodeX = 560 - routeCodeWidth - routeCodePadding - 20;
-    const routeCodeY = yPos - routeCodeHeight + 8;
-    
-    // Рамка для кода маршрута (светло-фиолетовая)
-    c.fillStyle = '#C4B5FD';
-    c.roundRect(routeCodeX - routeCodePadding, routeCodeY - routeCodePadding, routeCodeWidth + routeCodePadding * 2, routeCodeHeight, 6);
-    c.fill();
-    
-    c.fillStyle = '#6B21A8';
-    c.fillText(routeCodeText, routeCodeX, routeCodeY);
+    c.fillText(routeCode, 300, yPos);
 
     yPos += 90;
 
     // Время (заголовок)
     c.font = '28px Arial';
-    c.fillStyle = '#6B21A8';
-    c.fillText('Время', 40, yPos);
+    c.fillText('Время', 300, yPos);
     
-    yPos += 45;
+    yPos += 50;
     // Дата и время
     c.font = 'bold 38px Arial';
-    c.fillStyle = '#4C1D95';
-    c.fillText(format(new Date(), 'dd.MM.yyyy'), 40, yPos);
-    c.fillText(format(new Date(), 'HH:mm'), 320, yPos);
+    const dateTime = format(new Date(), 'dd.MM.yyyy') + ' ' + format(new Date(), 'HH:mm');
+    c.fillText(dateTime, 300, yPos);
 
     yPos += 90;
 
     // Код проверки (заголовок)
     c.font = '28px Arial';
-    c.fillStyle = '#6B21A8';
-    c.fillText('Код проверки:', 40, yPos);
+    c.fillText('Код проверки:', 300, yPos);
     
-    yPos += 45;
+    yPos += 50;
     // Код проверки (значение)
     c.font = 'bold 40px Arial';
-    c.fillStyle = '#4C1D95';
-    c.fillText(verificationCode, 40, yPos);
+    c.fillText(verificationCode, 300, yPos);
 
     yPos += 100;
 
@@ -346,6 +366,14 @@ bot.catch((err, ctx) => {
   console.error('Ошибка при обработке обновления:', err);
   console.error('Update ID:', ctx.update?.update_id);
   console.error('Stack trace:', err.stack);
+  
+  // Обработка конфликта (409) - другой экземпляр бота запущен
+  if (err.response?.error_code === 409) {
+    console.error('⚠️ КРИТИЧЕСКАЯ ОШИБКА: Другой экземпляр бота уже запущен!');
+    console.error('⚠️ Убедитесь, что только один экземпляр бота работает.');
+    process.exit(1);
+  }
+  
   try {
     ctx.reply('❌ Произошла ошибка. Попробуйте позже или обратитесь к администратору.');
   } catch (e) {
@@ -353,5 +381,23 @@ bot.catch((err, ctx) => {
   }
 });
 
-bot.launch();
-console.log('Бот запущен — готов к доходу');
+// Graceful shutdown
+const gracefulShutdown = (signal) => {
+  console.log(`Получен сигнал ${signal}, останавливаю бота...`);
+  bot.stop(signal);
+  process.exit(0);
+};
+
+process.once('SIGINT', () => gracefulShutdown('SIGINT'));
+process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+// Запуск бота
+bot.launch().then(() => {
+  console.log('Бот запущен — готов к доходу');
+}).catch((err) => {
+  console.error('Ошибка запуска бота:', err);
+  if (err.response?.error_code === 409) {
+    console.error('⚠️ Конфликт: другой экземпляр бота уже запущен. Убедитесь, что только один экземпляр работает.');
+  }
+  process.exit(1);
+});
