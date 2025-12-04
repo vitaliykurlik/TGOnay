@@ -277,60 +277,50 @@ bot.on('text', async (ctx) => {
     }
 
     // Координаты для размещения данных на шаблоне
-    // Эти значения нужно будет настроить под ваш конкретный PNG-шаблон
+    // Настроено под конкретный шаблон с пустыми полями
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
     const centerX = canvasWidth / 2;
 
-    // Координаты для данных (настраиваются под ваш шаблон)
-    // Примерные координаты - нужно будет скорректировать под ваш PNG
-    const routeValueY = canvasHeight * 0.22;   // ~22% от высоты - для Tag Route и Tag Plate
-    const timeValueY = canvasHeight * 0.42;    // ~42% от высоты - для даты и времени
-    const checkCodeValueY = canvasHeight * 0.62; // ~62% от высоты - для кода проверки
-    const qrCenterY = canvasHeight * 0.75;     // ~75% от высоты (центр QR)
+    // Координаты для данных (настроены под шаблон с пустыми полями)
+    // Поля для данных находятся ниже соответствующих лейблов
+    const routeFieldX = canvasWidth * 0.15;  // ~15% от ширины (левое поле)
+    const routeFieldY = canvasHeight * 0.20; // ~20% от высоты (поле маршрута)
+    const timeFieldX = canvasWidth * 0.15;   // ~15% от ширины (левое поле)
+    const timeFieldY = canvasHeight * 0.35; // ~35% от высоты (поле времени)
+    const checkCodeFieldX = canvasWidth * 0.15; // ~15% от ширины (левое поле)
+    const checkCodeFieldY = canvasHeight * 0.50; // ~50% от высоты (поле кода проверки)
+    const qrCenterY = canvasHeight * 0.75;     // ~75% от высоты (центр QR в белом квадрате)
 
-    // Настройка текста
-    c.textAlign = 'center';
+    // Настройка текста - выравнивание по левому краю (как в шаблоне)
+    c.textAlign = 'left';
+    c.fillStyle = '#1A1A1A';
     
-    // 1. Маршрут - Tag Route (белый тег с номером маршрута)
-    // Координаты для Tag Route (примерно)
+    // 1. Маршрут - номер маршрута в пустом поле
     const tagRouteText = route + 'E';
     c.font = 'bold 32px Arial';
-    c.fillStyle = '#1A1A1A';
-    // Если нужно нарисовать белый фон для тега, раскомментируйте:
-    // const tagRouteTextWidth = c.measureText(tagRouteText).width;
-    // c.fillStyle = '#FFFFFF';
-    // c.roundRect(centerX - tagRouteTextWidth/2 - 16, routeValueY - 22, tagRouteTextWidth + 32, 44, 18);
-    // c.fill();
-    c.fillStyle = '#1A1A1A';
-    c.fillText(tagRouteText, centerX - 60, routeValueY); // Смещение влево для Tag Route
-    
-    // Tag Plate (код маршрута)
-    c.font = 'bold 28px Arial';
-    c.fillText(routeCode, centerX + 60, routeValueY); // Смещение вправо для Tag Plate
+    c.fillText(tagRouteText, routeFieldX, routeFieldY);
 
-    // 2. Дата и время
+    // 2. Дата и время в пустом поле
     c.font = 'bold 34px Arial';
-    c.fillStyle = '#1A1A1A';
     const dateText = format(new Date(), 'dd.MM.yyyy');
     const timeText = format(new Date(), 'HH:mm');
     const dateTimeText = dateText + ' ' + timeText;
-    c.fillText(dateTimeText, centerX, timeValueY);
+    c.fillText(dateTimeText, timeFieldX, timeFieldY);
 
-    // 3. Код проверки
+    // 3. Код проверки в большом белом поле
     c.font = 'bold 48px Arial';
-    c.fillStyle = '#1A1A1A';
-    c.fillText(verificationCode, centerX, checkCodeValueY);
+    c.fillText(verificationCode, checkCodeFieldX, checkCodeFieldY);
 
-    // 4. QR-код (размещается в указанной области шаблона)
+    // 4. QR-код (размещается в белом квадрате внизу шаблона)
     try {
       console.log('Начинаю генерацию QR-кода для:', qrCode);
-      const qrSize = 280; // Размер QR-кода
+      const qrSize = 280; // Размер QR-кода (можно настроить под размер белого квадрата)
       const qrBuffer = await QRCode.toBuffer(qrCode, { width: qrSize, margin: 1, errorCorrectionLevel: 'M' });
       console.log('QR-код сгенерирован, загружаю изображение...');
       const img = await loadImage(qrBuffer);
       console.log('Изображение загружено, рисую на canvas...');
-      // Центрируем QR-код
+      // Центрируем QR-код в белом квадрате внизу
       const qrX = centerX - qrSize / 2;
       const qrY = qrCenterY - qrSize / 2;
       c.drawImage(img, qrX, qrY, qrSize, qrSize);
