@@ -1,6 +1,6 @@
 const { Telegraf, session } = require('telegraf');
 const QRCode = require('qrcode');
-const { createCanvas, CanvasRenderingContext2D } = require('canvas');
+const { createCanvas, CanvasRenderingContext2D, loadImage } = require('canvas');
 const { format } = require('date-fns');
 const fs = require('fs');
 const path = require('path');
@@ -101,12 +101,18 @@ bot.command('activate', (ctx) => {
   const code = args[1].toUpperCase();
   const trips = parseInt(args[2]);
   
-  if (!subscriptions[code]) {
-    return ctx.reply(`❌ Код ${code} не найден в базе`);
-  }
-  
   if (isNaN(trips) || trips <= 0) {
     return ctx.reply('❌ Укажите корректное количество поездок');
+  }
+  
+  // Если код не найден, создаём новую подписку
+  if (!subscriptions[code]) {
+    subscriptions[code] = { 
+      trips_left: 0, 
+      activated: false,
+      userId: null,
+      createdAt: new Date().toISOString()
+    };
   }
   
   subscriptions[code].trips_left += trips;
@@ -158,13 +164,24 @@ bot.command('check', (ctx) => {
 
 // Сгенерировать билет
 bot.hears('Сгенерировать билет', (ctx) => {
+  if (!ctx.session) ctx.session = {};
+  ctx.session.step = 'wait_code';
   ctx.reply('Введите код подписки (ONAY-XXXXXX):');
-  ctx.session = { step: 'wait_code' };
 });
 
 // Логика ввода
 bot.on('text', async (ctx) => {
+  // Пропускаем команды бота
+  if (ctx.message.text && ctx.message.text.startsWith('/')) {
+    return;
+  }
+  
+  // Пропускаем кнопки главного меню, если сессия не активна
   if (!ctx.session) ctx.session = {};
+  
+  if (!ctx.session.step && (ctx.message.text === 'Купить подписку' || ctx.message.text === 'Сгенерировать билет')) {
+    return; // Эти кнопки обрабатываются отдельными обработчиками
+  }
 
   if (ctx.session.step === 'wait_code') {
     const code = ctx.message.text.trim().toUpperCase();
@@ -204,6 +221,16 @@ bot.on('text', async (ctx) => {
     }
 
     const code = ctx.session.code;
+    if (!code) {
+      console.error('Ошибка: код подписки не найден в сессии');
+      return showMainMenu(ctx, '❌ Ошибка: код подписки не найден. Начните заново.');
+    }
+    
+    if (!subscriptions[code]) {
+      console.error('Ошибка: подписка не найдена в базе:', code);
+      return showMainMenu(ctx, '❌ Ошибка: подписка не найдена. Начните заново.');
+    }
+    
     subscriptions[code].trips_left -= 1;
     saveDB(subscriptions);
 
@@ -234,10 +261,16 @@ bot.on('text', async (ctx) => {
     c.fillText('Сегодня', 300, 100);
 
     // Маршрут + код
+    const route = ctx.session.route;
+    if (!route) {
+      console.error('Ошибка: маршрут не найден в сессии');
+      return showMainMenu(ctx, '❌ Ошибка: маршрут не найден. Начните заново.');
+    }
+    
     c.font = 'bold 52px Arial';
     c.fillStyle = '#1E3A8A';
     c.textAlign = 'left';
-    c.fillText('🚍 ' + ctx.session.route + 'E', 60, 220);
+    c.fillText('🚍 ' + route + 'E', 60, 220);
     c.fillStyle = '#9333EA';
     c.fillText(routeCode, 360, 220);
 
@@ -257,17 +290,39 @@ bot.on('text', async (ctx) => {
     c.fillText(verificationCode, 300, 490);
 
     // QR
-    const qrData = await QRCode.toDataURL(qrCode);
-    const img = new Image();
-    img.src = qrData;
-    img.onload = () => {
+    try {
+      console.log('Начинаю генерацию QR-кода для:', qrCode);
+      // Генерируем QR-код как буфер для лучшей совместимости
+      const qrBuffer = await QRCode.toBuffer(qrCode, { width: 400, margin: 1 });
+      console.log('QR-код сгенерирован, загружаю изображение...');
+      const img = await loadImage(qrBuffer);
+      console.log('Изображение загружено, рисую на canvas...');
       c.drawImage(img, 100, 540, 400, 400);
       const buffer = canvas.toBuffer('image/png');
-      ctx.replyWithPhoto({ source: buffer }, { caption: `✅ Билет сгенерирован!\nОсталось поездок: ${subscriptions[code].trips_left}\nДействует 30 мин` });
+      console.log('Билет создан, отправляю...');
+      await ctx.replyWithPhoto({ source: buffer }, { caption: `✅ Билет сгенерирован!\nОсталось поездок: ${subscriptions[code].trips_left}\nДействует 30 мин` });
+      console.log('Билет отправлен успешно');
+      ctx.session = {}; // Очищаем сессию после успешной генерации
       showMainMenu(ctx);
-    };
+    } catch (error) {
+      console.error('Ошибка генерации билета:', error);
+      console.error('Stack trace:', error.stack);
+      ctx.session = {}; // Очищаем сессию при ошибке
+      await ctx.reply('❌ Ошибка при генерации билета: ' + error.message);
+      showMainMenu(ctx);
+    }
+  }
+});
 
-    ctx.session = {};
+// Глобальная обработка ошибок
+bot.catch((err, ctx) => {
+  console.error('Ошибка при обработке обновления:', err);
+  console.error('Update ID:', ctx.update?.update_id);
+  console.error('Stack trace:', err.stack);
+  try {
+    ctx.reply('❌ Произошла ошибка. Попробуйте позже или обратитесь к администратору.');
+  } catch (e) {
+    console.error('Не удалось отправить сообщение об ошибке:', e);
   }
 });
 
