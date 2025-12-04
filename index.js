@@ -239,65 +239,92 @@ bot.on('text', async (ctx) => {
     const verificationCode = Math.random().toString(36).substring(2, 10).toUpperCase();
 
     // Создание билета
-    const canvas = createCanvas(600, 950);
+    const canvas = createCanvas(600, 900);
     const c = canvas.getContext('2d');
 
-    // Фиолетовый градиент
-    const gradient = c.createLinearGradient(0, 0, 0, 950);
-    gradient.addColorStop(0, '#E9D5FF');
-    gradient.addColorStop(1, '#C4B5FD');
-    c.fillStyle = gradient;
-    c.fillRect(0, 0, 600, 950);
-
-    // Белая карточка
-    c.fillStyle = '#FAF5FF';
-    c.roundRect(30, 30, 540, 890, 40);
+    // Светло-фиолетовый фон карточки (более точный цвет)
+    c.fillStyle = '#E9D5FF';
+    c.roundRect(20, 20, 560, 860, 25);
     c.fill();
 
-    // Сегодня
-    c.font = 'bold 42px Arial';
-    c.fillStyle = '#6B21A8';
-    c.textAlign = 'center';
-    c.fillText('Сегодня', 300, 100);
-
-    // Маршрут + код
     const route = ctx.session.route;
     if (!route) {
       console.error('Ошибка: маршрут не найден в сессии');
       return showMainMenu(ctx, '❌ Ошибка: маршрут не найден. Начните заново.');
     }
-    
-    c.font = 'bold 52px Arial';
-    c.fillStyle = '#1E3A8A';
-    c.textAlign = 'left';
-    c.fillText('🚍 ' + route + 'E', 60, 220);
-    c.fillStyle = '#9333EA';
-    c.fillText(routeCode, 360, 220);
 
-    // Время
-    c.font = 'bold 48px Arial';
-    c.fillStyle = '#1E3A8A';
-    c.fillText(format(new Date(), 'dd.MM.yyyy'), 60, 320);
-    c.fillText(format(new Date(), 'HH:mm'), 380, 320);
+    let yPos = 70;
 
-    // Код проверки
-    c.font = '30px Arial';
+    // Маршрут (заголовок)
+    c.font = '28px Arial';
     c.fillStyle = '#6B21A8';
-    c.textAlign = 'center';
-    c.fillText('Код проверки:', 300, 420);
-    c.font = 'bold 58px Arial';
-    c.fillStyle = '#1D4ED8';
-    c.fillText(verificationCode, 300, 490);
+    c.textAlign = 'left';
+    c.fillText('Маршрут', 40, yPos);
+    
+    yPos += 45;
+    // Автобус иконка + номер маршрута
+    c.font = 'bold 42px Arial';
+    c.fillStyle = '#4C1D95';
+    c.fillText('🚍 ' + route + 'E', 40, yPos);
+    
+    // Код маршрута в рамке (справа)
+    const routeCodeText = routeCode;
+    c.font = 'bold 32px Arial';
+    const routeCodeWidth = c.measureText(routeCodeText).width;
+    const routeCodePadding = 12;
+    const routeCodeHeight = 42;
+    const routeCodeX = 560 - routeCodeWidth - routeCodePadding - 20;
+    const routeCodeY = yPos - routeCodeHeight + 8;
+    
+    // Рамка для кода маршрута (светло-фиолетовая)
+    c.fillStyle = '#C4B5FD';
+    c.roundRect(routeCodeX - routeCodePadding, routeCodeY - routeCodePadding, routeCodeWidth + routeCodePadding * 2, routeCodeHeight, 6);
+    c.fill();
+    
+    c.fillStyle = '#6B21A8';
+    c.fillText(routeCodeText, routeCodeX, routeCodeY);
+
+    yPos += 90;
+
+    // Время (заголовок)
+    c.font = '28px Arial';
+    c.fillStyle = '#6B21A8';
+    c.fillText('Время', 40, yPos);
+    
+    yPos += 45;
+    // Дата и время
+    c.font = 'bold 38px Arial';
+    c.fillStyle = '#4C1D95';
+    c.fillText(format(new Date(), 'dd.MM.yyyy'), 40, yPos);
+    c.fillText(format(new Date(), 'HH:mm'), 320, yPos);
+
+    yPos += 90;
+
+    // Код проверки (заголовок)
+    c.font = '28px Arial';
+    c.fillStyle = '#6B21A8';
+    c.fillText('Код проверки:', 40, yPos);
+    
+    yPos += 45;
+    // Код проверки (значение)
+    c.font = 'bold 40px Arial';
+    c.fillStyle = '#4C1D95';
+    c.fillText(verificationCode, 40, yPos);
+
+    yPos += 100;
 
     // QR
     try {
       console.log('Начинаю генерацию QR-кода для:', qrCode);
       // Генерируем QR-код как буфер для лучшей совместимости
-      const qrBuffer = await QRCode.toBuffer(qrCode, { width: 400, margin: 1 });
+      const qrBuffer = await QRCode.toBuffer(qrCode, { width: 360, margin: 2, errorCorrectionLevel: 'M' });
       console.log('QR-код сгенерирован, загружаю изображение...');
       const img = await loadImage(qrBuffer);
       console.log('Изображение загружено, рисую на canvas...');
-      c.drawImage(img, 100, 540, 400, 400);
+      // Центрируем QR-код
+      const qrSize = 360;
+      const qrX = (600 - qrSize) / 2;
+      c.drawImage(img, qrX, yPos, qrSize, qrSize);
       const buffer = canvas.toBuffer('image/png');
       console.log('Билет создан, отправляю...');
       await ctx.replyWithPhoto({ source: buffer }, { caption: `✅ Билет сгенерирован!\nОсталось поездок: ${subscriptions[code].trips_left}\nДействует 30 мин` });
