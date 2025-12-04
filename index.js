@@ -284,22 +284,28 @@ bot.on('text', async (ctx) => {
 
     // Координаты для данных (настроены под шаблон с пустыми полями)
     // Поля для данных находятся ниже соответствующих лейблов
-    const routeFieldX = canvasWidth * 0.15;  // ~15% от ширины (левое поле)
-    const routeFieldY = canvasHeight * 0.20; // ~20% от высоты (поле маршрута)
-    const timeFieldX = canvasWidth * 0.15;   // ~15% от ширины (левое поле)
-    const timeFieldY = canvasHeight * 0.35; // ~35% от высоты (поле времени)
-    const checkCodeFieldX = canvasWidth * 0.15; // ~15% от ширины (левое поле)
-    const checkCodeFieldY = canvasHeight * 0.50; // ~50% от высоты (поле кода проверки)
-    const qrCenterY = canvasHeight * 0.75;     // ~75% от высоты (центр QR в белом квадрате)
+    const routeFieldX = canvasWidth * 0.17 + 10 + 22 - 11 + 5 + 11 + 11 - 2;  // на 1/5 символа левее (~2 пикселя)
+    const routeFieldY = canvasHeight * 0.27 - 3 - 1 - 5; // на 1/3 символа выше (~5 пикселей для шрифта 32px) - ИДЕАЛЬНО
+    const timeFieldX = canvasWidth * 0.15 - 5 - 1 - 10;   // 10 пикселей левее
+    const timeFieldY = canvasHeight * 0.40 - 4; // без изменений
+    const checkCodeFieldX = canvasWidth * 0.18 - 1; // Идеально - не трогаем
+    const checkCodeFieldY = canvasHeight * 0.50 - 1; // Идеально - не трогаем
+    const qrCenterY = canvasHeight * 0.72;     // Идеально - не трогаем
 
     // Настройка текста - выравнивание по левому краю (как в шаблоне)
     c.textAlign = 'left';
     c.fillStyle = '#1A1A1A';
     
-    // 1. Маршрут - номер маршрута в пустом поле
+    // 1. Маршрут - номер маршрута в пустом поле + 6-символьный код рядом
     const tagRouteText = route + 'E';
+    // Генерируем случайный 6-символьный код
+    const routeCode6 = Math.random().toString(36).substring(2, 8).toUpperCase();
     c.font = 'bold 32px Arial';
     c.fillText(tagRouteText, routeFieldX, routeFieldY);
+    // Рисуем 6-символьный код рядом с маршрутом
+    c.font = 'bold 28px Arial';
+    const routeTextWidth = c.measureText(tagRouteText).width;
+    c.fillText(routeCode6, routeFieldX + routeTextWidth + 20, routeFieldY);
 
     // 2. Дата и время в пустом поле
     c.font = 'bold 34px Arial';
@@ -308,8 +314,8 @@ bot.on('text', async (ctx) => {
     const dateTimeText = dateText + ' ' + timeText;
     c.fillText(dateTimeText, timeFieldX, timeFieldY);
 
-    // 3. Код проверки в большом белом поле
-    c.font = 'bold 48px Arial';
+    // 3. Код проверки в большом белом поле (уменьшенный размер)
+    c.font = 'bold 40px Arial';
     c.fillText(verificationCode, checkCodeFieldX, checkCodeFieldY);
 
     // 4. QR-код (размещается в белом квадрате внизу шаблона)
