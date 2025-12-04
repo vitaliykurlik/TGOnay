@@ -238,7 +238,7 @@ bot.on('text', async (ctx) => {
     const routeCode = Math.random().toString(36).substring(2, 9).toUpperCase();
     const verificationCode = Math.random().toString(36).substring(2, 10).toUpperCase();
 
-    // Создание билета
+    // Создание билета по макету
     const canvas = createCanvas(600, 900);
     const c = canvas.getContext('2d');
 
@@ -248,103 +248,170 @@ bot.on('text', async (ctx) => {
       return showMainMenu(ctx, '❌ Ошибка: маршрут не найден. Начните заново.');
     }
 
-    // Белый фон всего canvas
+    // 1. Экран - белый фон
     c.fillStyle = '#FFFFFF';
     c.fillRect(0, 0, 600, 900);
 
-    // Темно-фиолетовый фон карточки
-    c.fillStyle = '#8B5CF6';
-    c.roundRect(20, 20, 560, 860, 25);
+    // 2. Карточка билета - центрирована
+    const cardWidth = 480;
+    const cardHeight = 760;
+    const cardX = (600 - cardWidth) / 2;
+    const cardY = (900 - cardHeight) / 2;
+    const cardRadius = 70;
+
+    // Фон карточки #D6B5FF
+    c.fillStyle = '#D6B5FF';
+    c.roundRect(cardX, cardY, cardWidth, cardHeight, cardRadius);
     c.fill();
 
-    // Полукруглые вырезы слева (вырезаем белые полукруги)
-    const notchRadius = 15;
-    const notchY = 150;
-    c.fillStyle = '#FFFFFF';
-    c.beginPath();
-    c.arc(20, notchY, notchRadius, Math.PI / 2, Math.PI * 3 / 2);
-    c.fill();
-    c.beginPath();
-    c.arc(20, notchY + 200, notchRadius, Math.PI / 2, Math.PI * 3 / 2);
-    c.fill();
-    c.beginPath();
-    c.arc(20, notchY + 400, notchRadius, Math.PI / 2, Math.PI * 3 / 2);
-    c.fill();
-    c.beginPath();
-    c.arc(20, notchY + 600, notchRadius, Math.PI / 2, Math.PI * 3 / 2);
-    c.fill();
+    // Полукруглые вырезы (Subtract) - создаем маску
+    const notchRadius = 18;
+    const notchSpacing = 180;
+    const notchStartY = cardY + 100;
 
-    // Полукруглые вырезы справа
-    c.beginPath();
-    c.arc(580, notchY, notchRadius, -Math.PI / 2, Math.PI / 2);
-    c.fill();
-    c.beginPath();
-    c.arc(580, notchY + 200, notchRadius, -Math.PI / 2, Math.PI / 2);
-    c.fill();
-    c.beginPath();
-    c.arc(580, notchY + 400, notchRadius, -Math.PI / 2, Math.PI / 2);
-    c.fill();
-    c.beginPath();
-    c.arc(580, notchY + 600, notchRadius, -Math.PI / 2, Math.PI / 2);
-    c.fill();
+    // Вырезы слева
+    for (let i = 0; i < 4; i++) {
+      c.globalCompositeOperation = 'destination-out';
+      c.beginPath();
+      c.arc(cardX, notchStartY + i * notchSpacing, notchRadius, Math.PI / 2, Math.PI * 3 / 2);
+      c.fill();
+    }
 
-    // Все надписи по центру и черным цветом
+    // Вырезы справа
+    for (let i = 0; i < 4; i++) {
+      c.beginPath();
+      c.arc(cardX + cardWidth, notchStartY + i * notchSpacing, notchRadius, -Math.PI / 2, Math.PI / 2);
+      c.fill();
+    }
+    c.globalCompositeOperation = 'source-over';
+
+    // Padding: Top/Bottom 80, Left/Right 60
+    const paddingTop = 80;
+    const paddingLeft = 60;
+    const spacing = 36;
+    let yPos = cardY + paddingTop;
+
+    // 3. Блок маршрута (Route Group)
     c.textAlign = 'center';
-    c.fillStyle = '#000000';
-
-    let yPos = 100;
-
-    // Маршрут (заголовок)
-    c.font = '28px Arial';
-    c.fillText('Маршрут', 300, yPos);
     
-    yPos += 50;
-    // Автобус иконка + номер маршрута
-    c.font = 'bold 42px Arial';
-    c.fillText('🚍 ' + route + 'E', 300, yPos);
+    // Label "Маршрут" - цвет #A78BFA
+    c.font = '24px Arial';
+    c.fillStyle = '#A78BFA';
+    c.fillText('Маршрут', cardX + cardWidth / 2, yPos);
     
-    yPos += 50;
-    // Код маршрута
+    yPos += spacing;
+
+    // Route Row - горизонтальная компоновка: иконка автобуса + Tag Route + Tag Plate
+    const routeRowY = yPos;
+    const elementSpacing = 12;
+    
+    // Иконка автобуса
+    c.font = 'bold 36px Arial';
+    c.fillStyle = '#1A1A1A';
+    const busIcon = '🚍';
+    const busIconWidth = c.measureText(busIcon).width;
+    
+    // Tag Route - белый фон, радиус 18, текст "03E"
+    const tagRouteText = route + 'E';
     c.font = 'bold 32px Arial';
-    c.fillText(routeCode, 300, yPos);
-
-    yPos += 90;
-
-    // Время (заголовок)
-    c.font = '28px Arial';
-    c.fillText('Время', 300, yPos);
+    const tagRouteTextWidth = c.measureText(tagRouteText).width;
+    const tagRoutePadding = 16;
+    const tagRouteWidth = tagRouteTextWidth + tagRoutePadding * 2;
+    const tagRouteHeight = 44;
     
-    yPos += 50;
-    // Дата и время
-    c.font = 'bold 38px Arial';
-    const dateTime = format(new Date(), 'dd.MM.yyyy') + ' ' + format(new Date(), 'HH:mm');
-    c.fillText(dateTime, 300, yPos);
-
-    yPos += 90;
-
-    // Код проверки (заголовок)
-    c.font = '28px Arial';
-    c.fillText('Код проверки:', 300, yPos);
+    // Tag Plate - белый фон, радиус 18, текст routeCode
+    c.font = 'bold 28px Arial';
+    const tagPlateTextWidth = c.measureText(routeCode).width;
+    const tagPlatePadding = 16;
+    const tagPlateWidth = tagPlateTextWidth + tagPlatePadding * 2;
+    const tagPlateHeight = 44;
     
-    yPos += 50;
-    // Код проверки (значение)
-    c.font = 'bold 40px Arial';
-    c.fillText(verificationCode, 300, yPos);
+    // Общая ширина всех элементов
+    const totalWidth = busIconWidth + elementSpacing + tagRouteWidth + elementSpacing + tagPlateWidth;
+    const routeRowStartX = cardX + (cardWidth - totalWidth) / 2;
+    
+    // Рисуем иконку автобуса
+    c.fillText(busIcon, routeRowStartX + busIconWidth / 2, routeRowY + 12);
+    
+    // Рисуем Tag Route
+    const tagRouteX = routeRowStartX + busIconWidth + elementSpacing;
+    const tagRouteY = routeRowY - tagRouteHeight / 2;
+    c.fillStyle = '#FFFFFF';
+    c.roundRect(tagRouteX, tagRouteY, tagRouteWidth, tagRouteHeight, 18);
+    c.fill();
+    c.fillStyle = '#1A1A1A';
+    c.fillText(tagRouteText, tagRouteX + tagRouteWidth / 2, tagRouteY + tagRouteHeight / 2 + 10);
+    
+    // Рисуем Tag Plate
+    const tagPlateX = tagRouteX + tagRouteWidth + elementSpacing;
+    const tagPlateY = routeRowY - tagPlateHeight / 2;
+    c.fillStyle = '#FFFFFF';
+    c.roundRect(tagPlateX, tagPlateY, tagPlateWidth, tagPlateHeight, 18);
+    c.fill();
+    c.fillStyle = '#1A1A1A';
+    c.fillText(routeCode, tagPlateX + tagPlateWidth / 2, tagPlateY + tagPlateHeight / 2 + 10);
 
-    yPos += 100;
+    yPos += 60 + spacing;
 
-    // QR
+    // 4. Блок даты и времени (Datetime Group)
+    // Label "Время"
+    c.font = '24px Arial';
+    c.fillStyle = '#A78BFA';
+    c.fillText('Время', cardX + cardWidth / 2, yPos);
+    
+    yPos += spacing;
+    
+    // DateTime Row - дата и время в одной строке
+    c.font = 'bold 34px Arial';
+    c.fillStyle = '#1A1A1A';
+    const dateText = format(new Date(), 'dd.MM.yyyy');
+    const timeText = format(new Date(), 'HH:mm');
+    const dateTimeText = dateText + ' ' + timeText;
+    c.fillText(dateTimeText, cardX + cardWidth / 2, yPos);
+
+    yPos += 60 + spacing;
+
+    // 5. Блок кода проверки (CheckCode Group)
+    // Label "Код проверки:"
+    c.font = '24px Arial';
+    c.fillStyle = '#A78BFA';
+    c.fillText('Код проверки:', cardX + cardWidth / 2, yPos);
+    
+    yPos += spacing;
+    
+    // Код проверки (крупный, bold)
+    c.font = 'bold 48px Arial';
+    c.fillStyle = '#1A1A1A';
+    c.fillText(verificationCode, cardX + cardWidth / 2, yPos);
+
+    yPos += 80;
+
+    // 6. Блок QR-кода (QR Wrapper)
+    // QR Background - белый фон, радиус 28, padding 36
+    const qrPadding = 36;
+    const qrBackgroundRadius = 28;
+    const qrSize = 280;
+    const qrBackgroundSize = qrSize + qrPadding * 2;
+    const qrBackgroundX = cardX + (cardWidth - qrBackgroundSize) / 2;
+    const qrBackgroundY = yPos;
+    
+    // Белый фон для QR
+    c.fillStyle = '#FFFFFF';
+    c.roundRect(qrBackgroundX, qrBackgroundY, qrBackgroundSize, qrBackgroundSize, qrBackgroundRadius);
+    c.fill();
+    
+    // QR-код внутри
     try {
       console.log('Начинаю генерацию QR-кода для:', qrCode);
       // Генерируем QR-код как буфер для лучшей совместимости
-      const qrBuffer = await QRCode.toBuffer(qrCode, { width: 360, margin: 2, errorCorrectionLevel: 'M' });
+      const qrBuffer = await QRCode.toBuffer(qrCode, { width: qrSize, margin: 1, errorCorrectionLevel: 'M' });
       console.log('QR-код сгенерирован, загружаю изображение...');
       const img = await loadImage(qrBuffer);
       console.log('Изображение загружено, рисую на canvas...');
-      // Центрируем QR-код
-      const qrSize = 360;
-      const qrX = (600 - qrSize) / 2;
-      c.drawImage(img, qrX, yPos, qrSize, qrSize);
+      // Центрируем QR-код внутри белого фона
+      const qrX = qrBackgroundX + qrPadding;
+      const qrY = qrBackgroundY + qrPadding;
+      c.drawImage(img, qrX, qrY, qrSize, qrSize);
       const buffer = canvas.toBuffer('image/png');
       console.log('Билет создан, отправляю...');
       await ctx.replyWithPhoto({ source: buffer }, { caption: `✅ Билет сгенерирован!\nОсталось поездок: ${subscriptions[code].trips_left}\nДействует 30 мин` });
